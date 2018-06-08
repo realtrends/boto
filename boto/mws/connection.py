@@ -335,6 +335,7 @@ class MWSConnection(AWSQueryConnection):
             return body
         handler = XmlHandler(parser, self)
         xml.sax.parseString(body, handler)
+        setattr(parser, 'raw', body)
         return parser
 
     def method_for(self, name):
