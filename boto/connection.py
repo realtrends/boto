@@ -950,14 +950,15 @@ class AWSAuthConnection(object):
                 if request.method == 'HEAD' and getattr(response,
                                                         'chunked', False):
                     response.chunked = 0
-                if callable(retry_handler):
-                    status = retry_handler(response, i, next_sleep)
-                    if status:
-                        msg, i, next_sleep = status
-                        if msg:
-                            boto.log.debug(msg)
-                        time.sleep(next_sleep)
-                        continue
+                # MANTARO: don't use retry_handler
+                # if callable(retry_handler):
+                #     status = retry_handler(response, i, next_sleep)
+                #     if status:
+                #         msg, i, next_sleep = status
+                #         if msg:
+                #             boto.log.debug(msg)
+                #         time.sleep(next_sleep)
+                #         continue
                 if response.status in [500, 502, 503, 504]:
                     msg = 'Received %d response.  ' % response.status
                     msg += 'Retrying in %3.1f seconds' % next_sleep
@@ -965,6 +966,10 @@ class AWSAuthConnection(object):
                     body = response.read()
                     if isinstance(body, bytes):
                         body = body.decode('utf-8')
+                    # MANTARO: boto musn't handle throttling responses internally but to raise them.
+                    if response.status == 503:
+                        # MWS uses HTTP 503 error for QuotaExceeded and RequestThrottled
+                        raise BotoServerError(response.status, response.reason, body)
                 elif response.status < 300 or response.status >= 400 or \
                         not location:
                     # don't return connection to the pool if response contains
